@@ -14,6 +14,7 @@
 #' so it is generally preferred.
 #' @param return_models default `FALSE`. If `TRUE`, return a `list` contains
 #' cox models.
+#' @param parallel if `TRUE`, do parallel computation by **furrr** package.
 #' @import survival
 #' @importFrom stats as.formula
 #' @importFrom dplyr tibble
@@ -32,14 +33,18 @@
 #' ezcox(lung, covariates = c("sex", "ph.ecog"), controls = "age")
 #'
 #' # Return models
-#' ezcox(lung, covariates = c("age", "sex", "ph.ecog"),
-#'             return_models = TRUE)
-#' ezcox(lung, covariates = c("sex", "ph.ecog"), controls = "age",
-#'             return_models = TRUE)
+#' ezcox(lung,
+#'   covariates = c("age", "sex", "ph.ecog"),
+#'   return_models = TRUE
+#' )
+#' ezcox(lung,
+#'   covariates = c("sex", "ph.ecog"), controls = "age",
+#'   return_models = TRUE
+#' )
 ezcox <- function(data, covariates, controls = NULL,
                   time = "time", status = "status",
                   global_method = c("likelihood", "wald", "logrank"),
-                  return_models = FALSE) {
+                  return_models = FALSE, parallel = FALSE) {
   if (!"survival" %in% .packages()) {
     loadNamespace("survival")
   }
@@ -65,13 +70,14 @@ ezcox <- function(data, covariates, controls = NULL,
   }
 
   if (return_models) {
-    model_env = new.env(parent = emptyenv())
-    model_env$Variable = covariates
-    model_env$controls = ifelse(exists("controls2"),
-                                paste(controls2, collapse = ","),
-                                NA_character_)
-    model_env$models = list()
-    model_env$status = logical()
+    model_env <- new.env(parent = emptyenv())
+    model_env$Variable <- covariates
+    model_env$controls <- ifelse(exists("controls2"),
+      paste(controls2, collapse = ","),
+      NA_character_
+    )
+    model_env$models <- list()
+    model_env$status <- logical()
   }
 
   batch_one <- function(x, y, controls = NULL, return_models = FALSE) {
@@ -126,7 +132,7 @@ ezcox <- function(data, covariates, controls = NULL,
 
 
     if (return_models) {
-      model_env$models[[length(model_env$models) + 1]] = cox
+      model_env$models[[length(model_env$models) + 1]] <- cox
       model_env$status %<>% append(ifelse(class(cox) == "coxph", TRUE, FALSE))
     }
 
@@ -164,19 +170,42 @@ ezcox <- function(data, covariates, controls = NULL,
     )
   }
 
-  res = purrr::map2_df(covariates2, covariates, batch_one, controls = controls,
-                 return_models = return_models)
+  if (parallel) {
+    if (!requireNamespace("furrr")) {
+      stop("Please install 'furrr' package firstly!")
+    }
+
+    if (length(covariates2) < 50) {
+      warning("Warning: variable < 50, parallel option is not recommended!")
+    }
+
+    oplan <- future::plan()
+    future::plan("multiprocess")
+    on.exit(future::plan(oplan), add = TRUE)
+
+    res <- furrr::future_map2_dfr(covariates2, covariates, batch_one,
+      controls = controls,
+      return_models = return_models, .progress = TRUE
+    )
+  } else {
+    res <- purrr::map2_df(covariates2, covariates, batch_one,
+      controls = controls,
+      return_models = return_models
+    )
+  }
 
   if (return_models) {
-    models = dplyr::tibble(
+    models <- dplyr::tibble(
       Variable = model_env$Variable,
       control = model_env$controls,
       model = model_env$models,
       status = model_env$status
     )
-    res = list(res = res,
-         models = models)
-    class(res) = "ezcox"
+    res <- list(
+      res = res,
+      models = models
+    )
+    class(res) <- "ezcox"
   }
 
   res

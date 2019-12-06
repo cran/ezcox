@@ -1,6 +1,6 @@
 #' Run Cox Analysis in Batch Mode
 #'
-#' @param data a `data.frame`.
+#' @param data a `data.frame` containing variables, time and os status.
 #' @param covariates column names specifying variables.
 #' @param controls column names specifying controls.
 #' @param time column name specifying time, default is 'time'.
@@ -12,14 +12,17 @@
 #' they will give similar results. For small N, they may differ somewhat.
 #' The Likelihood ratio test has better behavior for small sample sizes,
 #' so it is generally preferred.
+#' @param keep_models If `TRUE`, keep models as local files.
 #' @param return_models default `FALSE`. If `TRUE`, return a `list` contains
 #' cox models.
-#' @param parallel if `TRUE`, do parallel computation by **furrr** package.
+#' @param model_dir a path for storing model results.
+#' @param verbose if `TRUE`, print extra info.
 #' @import survival
 #' @importFrom stats as.formula
 #' @importFrom dplyr tibble
 #' @importFrom purrr map2_df
-#' @return a `tibble` or a `list`
+#' @return a `ezcox` object
+#' @author Shixiang Wang <w_shixiang@163.com>
 #' @export
 #'
 #' @examples
@@ -44,9 +47,18 @@
 ezcox <- function(data, covariates, controls = NULL,
                   time = "time", status = "status",
                   global_method = c("likelihood", "wald", "logrank"),
-                  return_models = FALSE, parallel = FALSE) {
+                  keep_models = FALSE,
+                  return_models = FALSE,
+                  model_dir = file.path(tempdir(), "ezcox"),
+                  verbose = TRUE) {
+  stopifnot(is.data.frame(data))
+
   if (!"survival" %in% .packages()) {
     loadNamespace("survival")
+  }
+
+  if (!dir.exists(model_dir)) {
+    dir.create(model_dir, recursive = TRUE)
   }
 
   data$time <- data[[time]]
@@ -59,46 +71,44 @@ ezcox <- function(data, covariates, controls = NULL,
     logrank = test <- "sctest"
   )
 
-  # https://stackoverflow.com/questions/8396577/check-if-character-value-is-a-valid-r-object-name
-  isValidAndUnreserved <- function(string) {
-    make.names(string) == string
-  }
   covariates2 <- ifelse(isValidAndUnreserved(covariates), covariates, paste0("`", covariates, "`"))
   if (!is.null(controls)) {
     controls2 <- controls
     controls <- ifelse(isValidAndUnreserved(controls), controls, paste0("`", controls, "`"))
   }
 
-  if (return_models) {
-    model_env <- new.env(parent = emptyenv())
-    model_env$Variable <- covariates
-    model_env$controls <- ifelse(exists("controls2"),
-      paste(controls2, collapse = ","),
-      NA_character_
+  if (return_models | keep_models) {
+    model_df <- dplyr::tibble(
+      Variable = covariates,
+      control = ifelse(exists("controls2"),
+        paste(controls2, collapse = ","),
+        NA_character_
+      )
     )
-    model_env$models <- list()
-    model_env$status <- logical()
   }
 
-  batch_one <- function(x, y, controls = NULL, return_models = FALSE) {
+  batch_one <- function(x, y, controls = NULL, return_models = FALSE, verbose = TRUE) {
     if (!is.null(controls)) {
       type <- "multi"
     } else {
       type <- "single"
     }
-    message("=> Processing variable ", y)
+
+    if (verbose) message("=> Processing variable ", y)
 
     if (length(table(data[[y]])) > 1) {
-      message("==> Building Surv object...")
+      if (verbose) message("==> Building Surv object...")
       fm <- as.formula(paste(
         "Surv(time, status)~", x,
         ifelse(type == "multi", paste0("+", paste(controls, collapse = "+")), "")
       ))
-      message("==> Building Cox model...")
+      if (verbose) message("==> Building Cox model...")
       cox <- tryCatch(coxph(fm, data = data),
         error = function(e) {
-          message("==> Something wrong with variable ", y)
-          message("====> ", e)
+          if (verbose) {
+            message("==> Something wrong with variable ", y)
+            message("====> ", e)
+          }
         }
       )
 
@@ -120,7 +130,7 @@ ezcox <- function(data, covariates, controls = NULL,
         }
       })
     } else {
-      message("==> Variable ", y, "has less than 2 levels, skipping it...")
+      if (verbose) message("==> Variable ", y, "has less than 2 levels, skipping it...")
       tbl <- dplyr::tibble(
         contrast_level = NA,
         ref_level = NA,
@@ -130,10 +140,23 @@ ezcox <- function(data, covariates, controls = NULL,
       cox <- NA
     }
 
+    if (is.numeric(data[[y]])) {
+      n_var <- 1
+    } else {
+      n_var <- length(table(data[[y]])) - 1
+    }
+
+    tbl$is_control <- c(rep(FALSE, n_var), rep(TRUE, nrow(tbl) - n_var))
+
 
     if (return_models) {
-      model_env$models[[length(model_env$models) + 1]] <- cox
-      model_env$status %<>% append(ifelse(class(cox) == "coxph", TRUE, FALSE))
+      model_file <- tempfile(pattern = "ezcox_", tmpdir = model_dir)
+      model_df <- dplyr::tibble(
+        Variable = y,
+        model = list(cox),
+        status = ifelse(class(cox) == "coxph", TRUE, FALSE)
+      )
+      saveRDS(model_df, file = model_file)
     }
 
     if (class(cox) != "coxph" | all(is.na(tbl[["ref_level"]]))) {
@@ -154,9 +177,10 @@ ezcox <- function(data, covariates, controls = NULL,
         error = function(e) NA
       )
     }
-    message("==> Done.")
+    if (verbose) message("==> Done.")
     dplyr::tibble(
       Variable = y,
+      is_control = tbl[["is_control"]],
       contrast_level = tbl[["contrast_level"]],
       ref_level = tbl[["ref_level"]],
       n_contrast = tbl[["n_contrast"]],
@@ -166,47 +190,45 @@ ezcox <- function(data, covariates, controls = NULL,
       lower_95 = lower_95,
       upper_95 = upper_95,
       p.value = p.value,
-      global.pval = glob.pval
+      global.pval = glob.pval,
+      model_file = ifelse(exists("model_file"), model_file, NA_character_)
     )
   }
 
-  if (parallel) {
-    if (!requireNamespace("furrr")) {
-      stop("Please install 'furrr' package firstly!")
+
+  res <- purrr::map2_df(covariates2, covariates, batch_one,
+    controls = controls,
+    return_models = return_models | keep_models,
+    verbose = verbose
+  )
+
+  if (return_models | keep_models) {
+    models <- dplyr::left_join(
+      model_df,
+      res %>%
+        dplyr::select(c("Variable", "model_file")) %>%
+        unique(),
+      by = "Variable"
+    )
+
+    if (return_models) {
+      model_df <- purrr::map_df(models$model_file, function(x) {
+        readRDS(x)
+      })
+
+      models <- dplyr::left_join(models, model_df, by = "Variable")
     }
 
-    if (length(covariates2) < 50) {
-      warning("Warning: variable < 50, parallel option is not recommended!")
-    }
-
-    oplan <- future::plan()
-    future::plan("multiprocess")
-    on.exit(future::plan(oplan), add = TRUE)
-
-    res <- furrr::future_map2_dfr(covariates2, covariates, batch_one,
-      controls = controls,
-      return_models = return_models, .progress = TRUE
-    )
-  } else {
-    res <- purrr::map2_df(covariates2, covariates, batch_one,
-      controls = controls,
-      return_models = return_models
-    )
-  }
-
-  if (return_models) {
-    models <- dplyr::tibble(
-      Variable = model_env$Variable,
-      control = model_env$controls,
-      model = model_env$models,
-      status = model_env$status
-    )
+    res$model_file <- NULL
     res <- list(
       res = res,
       models = models
     )
-    class(res) <- "ezcox"
+  } else {
+    res$model_file <- NULL
   }
 
+  class(res) <- c("ezcox", class(res))
+  attr(res, "controls") <- controls
   res
 }

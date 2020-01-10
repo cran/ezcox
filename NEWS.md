@@ -1,3 +1,12 @@
+# ezcox 0.4.0
+
+* Add function `show_forest`, which is a wrapper of
+function `ezcox`, `get_models` and `show_models`.
+
+# ezcox 0.3.1
+
+* Fix the bug that a `NA` is added to model names when no control
+
 # ezcox 0.3.0
 
 * Remove `parallel` option in `ezcox()`

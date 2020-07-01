@@ -14,7 +14,11 @@ show_forest(
   model_names = NULL,
   vars_to_show = NULL,
   drop_controls = FALSE,
+  add_caption = TRUE,
+  headings = list(variable = "Variable", n = "N", measure = "Hazard ratio", ci = NULL,
+    p = "p"),
   model_dir = file.path(tempdir(), "ezcox"),
+  verbose = TRUE,
   ...
 )
 }
@@ -40,7 +44,13 @@ to show, but remember, the models have not been changed.}
 \item{drop_controls}{works when \code{covariates=NULL} and \code{models} is a \code{ezcox_models}, if \code{TRUE},
 it removes control variables automatically.}
 
+\item{add_caption}{if \code{TRUE}, add caption to the plot.}
+
+\item{headings}{a \code{list} for setting the heading text.}
+
 \item{model_dir}{a path for storing model results.}
+
+\item{verbose}{if \code{TRUE}, print extra info.}
 
 \item{...}{other parameters passing to \code{\link[survival:coxph]{survival::coxph()}}.}
 }
@@ -49,7 +59,7 @@ a \code{ggplot} object
 }
 \description{
 This is a wrapper of function \link{ezcox}, \link{get_models} and
-\link{show_models}. If focus on generating forest plot easily
+\link{show_models}. It focus on generating forest plot easily
 and flexibly.
 }
 \examples{

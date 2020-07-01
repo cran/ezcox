@@ -1,7 +1,7 @@
 Type: Package
 Package: ezcox
 Title: Easily Process a Batch of Cox Models
-Version: 0.6.0
+Version: 0.7.0
 Authors@R: 
     person(given = "Shixiang",
            family = "Wang",
@@ -16,15 +16,15 @@ URL: https://github.com/ShixiangWang/ezcox
 BugReports: https://github.com/ShixiangWang/ezcox/issues
 Depends: R (>= 3.5)
 Imports: dplyr (>= 0.8.3), magrittr (>= 1.5), purrr (>= 0.3.2),
-        survival, rlang (>= 0.1.2), forestmodel, utils
+        survival, rlang (>= 0.1.2), forestmodel, utils, ggplot2
 Suggests: covr (>= 3.2.1), testthat (>= 2.1.0), roxygen2 (>= 6.1.1),
         knitr, rmarkdown, future, furrr
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2020-06-03 14:05:46 UTC; Shixiang
+Packaged: 2020-07-01 14:01:30 UTC; Administrator
 Author: Shixiang Wang [aut, cre] (<https://orcid.org/0000-0001-9855-7357>)
 Repository: CRAN
-Date/Publication: 2020-06-03 14:30:02 UTC
+Date/Publication: 2020-07-01 14:50:03 UTC

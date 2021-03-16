@@ -5,8 +5,10 @@ knitr::opts_chunk$set(
 )
 
 ## ----example------------------------------------------------------------------
+library(survival)
 library(ezcox)
-data("lung", package = "survival")
+data(lung)
+head(lung)
 
 # Build unvariable models
 ezcox(lung, covariates = c("age", "sex", "ph.ecog"))

@@ -41,7 +41,7 @@ zz = ezcox(lung, covariates = c("sex", "ph.ecog"), controls = "age", return_mode
 mds = get_models(zz)
 str(mds, max.level = 1)
 
-## ---- fig.height=6, fig.width=6-----------------------------------------------
+## ---- fig.height=5, fig.width=6-----------------------------------------------
 show_models(mds)
 # Set model names
 show_models(mds, model_names = paste0("Model ", 1:2))

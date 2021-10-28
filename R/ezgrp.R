@@ -48,7 +48,6 @@ ezcox_group <- function(data, grp_var, covariate, controls = NULL,
   run_model <- function(data, grp_var, covariate, controls = NULL,
                         time = "time", status = status, verbose = FALSE) {
     var <- unique(as.character(data[[grp_var]]))
-    data <- data[, c(covariate, controls, time, status)]
     ## modify covariable name
     colnames(data)[colnames(data) == covariate] <- var
     ezcox(
@@ -97,6 +96,18 @@ ezcox_group <- function(data, grp_var, covariate, controls = NULL,
   fit_models <- get_models(md_list)
 
   ## show_models
+  if ("ALL" %in% md_list$models$Group) {
+    # Move this model to bottom
+    idx_all <- which(md_list$models$Group == "ALL")
+    idx <- seq_len(length(md_list$models$Group))
+    if (idx_all != max(idx)) {
+      new_order <- c(setdiff(idx, idx_all), idx_all)
+      fit_models2 <- fit_models
+      fit_models <- fit_models[new_order]
+      attributes(fit_models) <- attributes(fit_models2)
+    }
+  }
+
   p <- show_models(fit_models, merge_models = TRUE, drop_controls = TRUE, headings = headings, ...)
 
   if (is.null(p)) {

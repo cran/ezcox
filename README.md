@@ -11,7 +11,7 @@ status](https://www.r-pkg.org/badges/version/ezcox)](https://CRAN.R-project.org/
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FShixiangWang%2Fezcox&count_bg=%2379C83D&title_bg=%23555555&icon=fandom.svg&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 ![R-CMD-check](https://github.com/ShixiangWang/ezcox/workflows/R-CMD-check/badge.svg)
 [![Codecov test
-coverage](https://codecov.io/gh/ShixiangWang/ezcox/branch/master/graph/badge.svg)](https://codecov.io/gh/ShixiangWang/ezcox?branch=master)
+coverage](https://app.codecov.io/gh/ShixiangWang/ezcox/branch/master/graph/badge.svg)](https://app.codecov.io/gh/ShixiangWang/ezcox?branch=master)
 [![Lifecycle:
 stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 <!-- badges: end -->
@@ -154,8 +154,6 @@ show_models(mds)
 
 ## :page\_with\_curl: Citation
 
-**ezcox** has not been published, if you are using it in academic
-research, please cite:
-
--   Shixiang Wang (2021). ezcox: Easily Process a Batch of Cox Models. R
-    package version 1.0.0. <https://github.com/ShixiangWang/ezcox>
+If you are using it in academic research, please cite the preprint
+[arXiv:2110.14232](https://arxiv.org/abs/2110.14232) along with URL of
+this repo.

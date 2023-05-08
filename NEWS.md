@@ -1,3 +1,12 @@
+# ezcox 1.0.4
+
+* Refined the handle of `isValidAndUnreserved()`.
+* Enhanced the `forester()` to render labels better.
+
+# ezcox 1.0.3
+
+* Add `utf8` as dependency to try passing check.
+
 # ezcox 1.0.2
 
 * Fixed changable `ALL` group in `ezcox_group()`.
